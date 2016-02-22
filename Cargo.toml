@@ -1,0 +1,7 @@
+[package]
+name = "prometheus"
+version = "0.1.0"
+authors = ["Christopher Taylor <ccmtaylor@gmail.com>"]
+
+[dependencies]
+time = "0.1"
