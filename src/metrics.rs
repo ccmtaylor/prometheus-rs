@@ -101,10 +101,10 @@ mod tests {
 
         let mut g = 0.0;
         {
-            let _ = g.timer();
-            thread::sleep(Duration::new(10, 0));
+            let _t = g.timer();
+            thread::sleep(Duration::new(1, 0));
         }
         println!("timer is {}", g);
-        assert_eq!(0.0, g);
+        assert!(g >= 1.0);
     }
 }
