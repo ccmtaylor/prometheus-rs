@@ -43,8 +43,28 @@ impl<'a, G> Drop for GaugeTimer<'a, G> where G: Gauge {
     }
 }
 
-trait Histogram {
+pub trait Histogram {
     fn observe(&mut self, val: f64);
+    fn timer<'a>(&'a mut self) -> HistogramTimer<'a, Self>
+        where Self: Sized {
+        println!("starting timer");
+        HistogramTimer {
+            histogram: self,
+            start_s: time::precise_time_s(),
+        }
+    }
+}
+
+pub struct HistogramTimer<'a, H: Histogram + 'a> {
+    histogram: &'a mut H,
+    start_s: f64,
+}
+impl<'a, H> Drop for HistogramTimer<'a, H> where H: Histogram {
+    fn drop(&mut self) {
+        let delta = time::precise_time_s() - self.start_s;
+        println!("stopping timer, {}", delta);
+        self.histogram.observe(delta);
+    }
 }
 
 #[cfg(test)]
