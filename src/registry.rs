@@ -4,7 +4,7 @@ use metrics;
 
 struct Sample<'a> {
     name: &'a str,
-    labels: &'a BTreeMap<&'a str, &'a str>,
+    labels: BTreeMap<&'a str, &'a str>,
     value: f64,
 }
 
@@ -19,10 +19,6 @@ struct Metric<'a> {
     kind: Kind,
     help: &'a str,
     samples: Vec<Sample<'a>>
-}
-
-trait Collector {
-    fn as_metric(&self) -> Metric;
 }
 
 struct Counters<'a> {
@@ -40,17 +36,17 @@ impl<'a> Counters<'a> {
     }
 }
 
-impl<'a> Collector for Counters<'a> {
-   fn as_metric(&self) -> Metric {
+impl<'a> From<Counters<'a>> for Metric<'a> {
+   fn from(counters: Counters<'a>) -> Metric<'a> {
         Metric {
-            name: self.name,
+            name: counters.name,
             kind: Kind::Counter,
-            help: self.help,
-            samples: self.children
+            help: counters.help,
+            samples: counters.children
                 .iter()
                 .map(|(labels, child)| Sample {
-                    name: self.name,
-                    labels: labels,
+                    name: counters.name,
+                    labels: labels.clone(),
                     value: child.value,
                 })
                 .collect(),
