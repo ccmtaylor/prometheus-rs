@@ -2,10 +2,17 @@ use std::collections::BTreeMap;
 
 use metrics;
 
-struct Sample<'a> {
-    name: &'a str,
-    labels: BTreeMap<&'a str, &'a str>,
-    value: f64,
+trait Metric<S: Sample> {
+    fn name(&self) -> &str;
+    fn help(&self) -> &str;
+    fn kind(&self) -> Kind;
+    fn samples(&self) -> Box<Iterator<Item=&Counter>>;
+}
+
+trait Sample {
+    fn name(&self) -> &str;
+    fn labels(&self) -> Box<Iterator<Item=&(&str, &str)>>;
+    fn value(&self) -> f64;
 }
 
 enum Kind {
@@ -14,21 +21,14 @@ enum Kind {
     Histogram,
 }
 
-struct Metric<'a> {
-    name: &'a str,
-    kind: Kind,
-    help: &'a str,
-    samples: Vec<Sample<'a>>
+struct Counters {
+    name: String,
+    help: String,
+    children: BTreeMap<BTreeMap<&'static str, String>, Counter>,
 }
 
-struct Counters<'a> {
-    name: &'a str,
-    help: &'a str,
-    children: BTreeMap<BTreeMap<&'a str,&'a str>, Counter>,
-}
-
-impl<'a> Counters<'a> {
-    pub fn with_labels(&mut self, labels: BTreeMap<&'a str, &'a str>) -> &Counter {
+impl Counters {
+    pub fn with_labels(&mut self, labels: BTreeMap<&'static str, String>) -> &Counter {
         let child = Counter {
             value: 0.0,
         };
@@ -36,26 +36,23 @@ impl<'a> Counters<'a> {
     }
 }
 
-impl<'a> From<Counters<'a>> for Metric<'a> {
-   fn from(counters: Counters<'a>) -> Metric<'a> {
-        Metric {
-            name: counters.name,
-            kind: Kind::Counter,
-            help: counters.help,
-            samples: counters.children
-                .iter()
-                .map(|(labels, child)| Sample {
-                    name: counters.name,
-                    labels: labels.clone(),
-                    value: child.value,
-                })
-                .collect(),
-        }
-    }
+impl Metric<Counter> for Counters {
+    fn name(&self) -> &str {&self.name}
+    fn help(&self) -> &str {&self.help}
+    fn kind(&self) -> Kind {Kind::Counter}
+    fn samples(&self) -> Box<Iterator<Item=&Counter>> {&self.children.values()}
 }
 
 pub struct Counter {
+    name: String,
     value: f64,
+    labels: BTreeMap<&'static str, String>,
+}
+
+impl Sample for Counter {
+    fn name(&self) -> &str {&self.name}
+    fn value(&self) -> f64 {self.value}
+    fn labels(&self) -> Box<Iterator<Item=&(&str, &str)>> {Box::from(self.labels.iter().map(|k, s| (k, &s[..])))}
 }
 
 impl<'a> metrics::Counter for Counter {
